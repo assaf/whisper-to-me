@@ -16,26 +16,91 @@ AGGREGATES =
 
 
 class Whisper
-  constructor: (basedir)->
+  constructor: (basedir = "/opt/graphite/storage")->
     @basedir = Path.normalize(basedir)
-
-  # Read the index file and pass list of indexes to callback.
-  index: (callback)->
-    File.readFile Path.resolve(@basedir, "index"), "utf-8", (error, file)->
-      return callback error if error
-      metrics = file.split("\n").filter((m)-> !!m)
-      callback null, metrics
-
-  metric: (name, from_time, until_time, callback)->
-    filename = Path.normalize("/#{name.replace(/\./g, "/")}.wsp")
-    File.open "#{@basedir}/whisper#{filename}", "r", (error, fd)->
-      return callback error if error
-      Whisper.points fd, from_time, until_time, (error, meta, points)->
-        File.close fd
-        callback error, meta, points
+    # Maps metric name to file descriptor
+    @metrics = {}
 
 
-  # Read header information and pass to callback.
+  # Given a FQN, return all matching metrics. Each name part may end with * for partial matching.
+  find: (fqn, callback)->
+    # Given a FQN as array of names (parts), index into the current name part,
+    # a file system path, find all .wsp files that match and pass the to
+    # callback.
+    next_part = (parts, index, path, callback)->
+      # Work on the next FQN part.
+      part = parts[index]
+      if part == ""
+        callback null, []
+
+      if index == parts.length - 1
+        # This is the last part, so match to actual file.
+        if part[part.length - 1] == "*"
+          # Part name ends with a star, and this is the last, part -> lookup multiple files
+          part = part.slice(0, part.length - 1)
+          Path.exists path, (exists)->
+            return callback null, [] unless exists
+
+            File.readdir path, (error, filenames)->
+              return callback error if error
+              matches = (Path.basename(fn, ".swp") for fn in filenames when fn.slice(0, part.length) == part)
+              matches = (parts.slice(0, index - 1).concat(match).join(".") for match in matches)
+              callback null, matches
+        else
+          # That was the last part, so we're going to return file name.
+          callback null, [parts.join(".")]
+      else if part[part.length - 1] == "*"
+        part = part.slice(0, part.length - 1)
+        Path.exists path, (exists)->
+          return callback null, [] unless exists
+
+          # Part name ends with a star, have to look into all matching directories
+          File.readdir path, (error, filenames)->
+            return callback error if error
+            matches = (fn for fn in filenames when fn.slice(0, part.length) == part)
+            # This function operates on the next match, adds any mathcing
+            # metrics to the array (all) and passes the result to callback.
+            next_sibling = (all)->
+              match = matches.shift()
+              if match
+                clone = parts.slice()
+                clone[index] = match
+                next_part clone, index + 1, "#{path}/#{match}", (error, metrics)->
+                  return callback error if error
+                  next_sibling all.concat(metrics)
+              else
+                callback null, all
+            next_sibling []
+      else
+        # There are more FQN parts to look up
+        next_part parts, index + 1, "#{path}/#{part}", callback
+    next_part fqn.split("."), 0, "#{@basedir}/whisper", callback
+
+
+  # Given a metric, time range (in seconds), load all datapoints for that time
+  # range and pass to callback three arguments:
+  # - Error if happend
+  # - Information about the result
+  # - Array of zero or more points
+  #
+  # Second argument specifies
+  # from      - Actual start time (in seconds)
+  # until     - Actual end time (in seconds)
+  # step      - Distance between each point (in seconds)
+  # aggregate - Aggregate name (average, sum, etc)
+  metric: (fqn, from_time, until_time, callback)->
+    fd = @metrics[fqn]
+    if fd
+      Whisper.points fd, from_time, until_time, callback
+    else
+      filename = "#{@basedir}/whisper/#{fqn.replace(/\./g, "/")}.wsp"
+      File.open filename, "r", (error, fd)=>
+        return callback error if error
+        @metrics[fqn] = fd
+        Whisper.points fd, from_time, until_time, callback
+
+
+# Read header information and pass to callback.
 Whisper.header = (fd, callback)->
   metadata = new Buffer(METADATA_SIZE)
   File.read fd, metadata, 0, METADATA_SIZE, 0, (error)->
