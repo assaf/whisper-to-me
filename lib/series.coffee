@@ -14,19 +14,18 @@ AGGREGATORS =
   average: (points)-> # average of all values in range
     sum = 0
     count = 0
-    for i in points
-      value = points[i]
+    for i, value of points
       unless value == undefined
         sum += value
         count++
     if count == 0
       return undefined
-    return sum / count
+    else
+      return sum / count
 
   sum: (points)-> # sum of all values in range
     sum = 0
-    for i in points
-      value = points[i]
+    for i, value of points
       unless value == undefined
         sum += value
     return sum
@@ -36,16 +35,16 @@ AGGREGATORS =
 
   max: (points)-> # maximum value in range
     max = undefined
-    for i in points
-      if value = points[i]
+    for i, value of points
+      unless value == undefined
         if max == undefined || value > max
           max = value
     return max
 
   min: (points)-> # minimum value in range
     min = undefined
-    for i in points
-      if value = points[i]
+    for i, value of points
+      unless value == undefined
         if min == undefined || value < min
           min = value
     return min
@@ -82,9 +81,7 @@ class Series
     if until_point > @points_count
       until_point = @points_count
 
-    if until_point == @from
-      return undefined
-    set = @datapoints.slice(from_point, until_point - from_point)
+    set = @datapoints.slice(from_point, until_point)
     if set.length == 0
       return undefined
     else
