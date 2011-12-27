@@ -42,9 +42,20 @@ class Whisper
 
             File.readdir path, (error, filenames)->
               return callback error if error
-              matches = (Path.basename(fn, ".swp") for fn in filenames when fn.slice(0, part.length) == part)
-              matches = (parts.slice(0, index - 1).concat(match).join(".") for match in matches)
-              callback null, matches
+              candidates = (Path.basename(fn, ".wsp") for fn in filenames when fn.slice(0, part.length) == part && fn.slice(-4) == ".wsp")
+              next_match = (i, matches)->
+                if i == candidates.length
+                  callback null, matches
+                else
+                  match = candidates[i]
+                  File.stat "#{path}/#{match.replace(/\./g, "/")}.wsp", (error, stat)->
+                    return callback error if error
+                    if stat.isFile()
+                      next_match i + 1, matches.concat(parts.slice(0, index).concat(match).join("."))
+                    else
+                      next_match i + 1, matches
+
+              next_match 0, []
         else
           # That was the last part, so we're going to return file name.
           callback null, [parts.join(".")]

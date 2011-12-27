@@ -55,6 +55,7 @@ AGGREGATORS =
 # series name, and two styling properties, color (default to undefined) and width (default to 1 pixel).
 class Series
   constructor: (options)->
+    assert @name = options.name, "Missing argument 'name'"
     assert @from = options.from, "Missing argument 'from'"
     assert @to = options.to, "Missing argument 'to'"
     assert @sec_per_point = options.sec_per_point, "Missing argument 'sec_per_point'"

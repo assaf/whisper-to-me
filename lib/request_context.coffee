@@ -26,20 +26,21 @@ class RequestContext
   #
   # If to is absent, it is set to the current time.  If from is absent, it is set relative to to, at a resolution of one
   # minute per pixel.
-  constructor: (@whisper, from, to, @pixels)->
-    assert @pixels, "Argument pixels is required"
+  constructor: ({ @whisper, from, to, width })->
+    assert width, "Argument width is required"
     to ?= Math.floor(Date.now() / 1000)
-    from ?= to - 60 * @pixels
+    from ?= to - 60 * width
     assert from < to, "Invalid time range, from less than to"
 
     # Calculate number of seconds per pixel
-    @sec_per_point = Math.floor((to - from) / @pixels)
+    @sec_per_point = Math.floor((to - from) / width)
     @sec_per_point ||= 1
 
     # Determine real time range given resolution
     @to = to - to % @sec_per_point
     @from = from - from % @sec_per_point
-    assert (@to - @from) / @sec_per_point == @pixels, "Something is wrong with our rounding algorithm"
+    assert (@to - @from) / @sec_per_point == width, "Something is wrong with our rounding algorithm"
+    @points_count = width
 
     # Cache for duration of request
     @metrics = {}
@@ -52,10 +53,22 @@ class RequestContext
   # points.
   evaluate: (targets, callback)->
     targets = [targets] unless Array.isArray(targets)
-    next = (i, results)=>
+    next_result = (i, results)=>
       if i == targets.length # No more results.
-        process.nextTick ->
-          callback null, results
+        process.nextTick =>
+          targets = new Array(results.length)
+          for i, series of results
+            datapoints = new Array(@points_count)
+            time = @from
+            for j in [0...@points_count]
+              next = time + @sec_per_point
+              value = series.valueAt(time, next)
+              datapoints[j] = [value, time]
+              time = next
+            targets[i] =
+              target:     series.name
+              datapoints: datapoints
+          callback null, targets
       else
         console.log "Evaluating #{targets[i]}"
         # Evaluate next target, consolidate results into single array.
@@ -65,8 +78,8 @@ class RequestContext
             if error
               callback error
             else
-              next i + 1, results.concat(result)
-    next 0, []
+              next_result i + 1, results.concat(result)
+    next_result 0, []
 
   # Evaluate a single target expression and passes result to the callback.  Expression is an object returned from the
   # parser.   Result is an array of time series.
@@ -88,7 +101,7 @@ class RequestContext
       return
 
     # Evaluates argument i, when done (i = args.length), evaluate function.
-    next = (i, values)=>
+    next_arg = (i, values)=>
       if i == args.length
         try
           results = fn(this, values...)
@@ -104,8 +117,8 @@ class RequestContext
       else
         @_evaluateArgument args[i], (error, value)->
           return callback error if error
-          next i + 1, values.concat(value)
-    next 0, []
+          next_arg i + 1, values.concat(value)
+    next_arg 0, []
 
   # Evaluate a single function argument expression.  Expression may evaluate to string, number, series name or function
   # name/arguments.
@@ -128,12 +141,12 @@ class RequestContext
 
   # Find all the metrics that match glob, pass an array of time series to callback.
   get: (glob, callback)->
-    whisper.find glob, (error, names)=>
+    @whisper.find glob, (error, names)=>
       return callback error if error
       if names.length == 0
         callback new Error("No metrics found for #{glob}")
       else
-        next = (i, results)=>
+        next_metric = (i, results)=>
           if i == names.length
             process.nextTick ->
               callback null, results
@@ -141,9 +154,9 @@ class RequestContext
             name = names[i]
             metric = @metrics[name]
             if metric
-              next i + 1, results.concat(metric)
+              next_metric i + 1, results.concat(metric)
             else
-              whisper.metric name, @from, @to, (error, time_info, datapoints)=>
+              @whisper.metric name, @from, @to, (error, time_info, datapoints)=>
                 return callback error if error
                 options =
                   name:           name
@@ -153,8 +166,8 @@ class RequestContext
                   datapoints:     datapoints
                 series = results.concat(new Series(options))
                 @metrics[name] = series
-                next i + 1, results.concat(series)
-        next 0, []
+                next_metric i + 1, results.concat(series)
+        next_metric 0, []
 
 
   # -- Series --

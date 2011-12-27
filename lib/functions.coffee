@@ -29,10 +29,11 @@ FUNCTIONS =
 
     if typeof series2orNumber == "number"
       series2 = context.constant(series2orNumber)
+      name = "#{series1.name}/#{series2orNumber}%"
     else
       series2 = series2orNumber[0]
-    percent = context.combine("#{series1}/#{series2orNumber}%", series1[0], series2, fn)
-    return percent
+      name = "#{series1.name}/#{series2orNumber.name}%"
+    return context.combine(name, series1[0], series2, fn)
 
   # Takes one metric or a wildcard seriesList followed by an integer N. Out of all metrics passed, draws only the
   # metrics with an average value above N for the time period specified.
@@ -56,7 +57,8 @@ FUNCTIONS =
           count++
       if count > 0
         return sum / count
-    return context.combine("avg(#{series_list.join(",")})", series_list..., fn)
+    names = (series.name for series in series_list).join(",")
+    return context.combine("avg(#{names})", series_list..., fn)
 
   # Draws a horizontal line at value F across the graph.
   constantLine: (context, value)->

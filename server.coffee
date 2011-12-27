@@ -1,7 +1,7 @@
-Express   = require("express")
-File      = require("fs")
-Whisper   = require("./lib/whisper")
-mapper    = require("./lib/targets")
+Express         = require("express")
+File            = require("fs")
+Whisper         = require("./lib/whisper")
+RequestContext  = require("./lib/request_context")
 
 
 server = Express.createServer()
@@ -35,13 +35,14 @@ server.get "/javascripts/d3*.js", (req, res, next)->
     res.send script, "Content-Type": "application/javascript"
 
 
-server.mapper = mapper("/opt/graphite/storage")
+whisper = new Whisper()
+
 
 server.get "/render", (req, res, next)->
-  from_time = (Date.now() - 86400000) / 1000
-  until_time = Date.now() / 1000
-  points = 800
-  server.mapper [req.query.target], from_time, until_time, points, (error, results)->
+  #from_time = (Date.now() - 86400000) / 1000
+  #until_time = Date.now() / 1000
+  context = new RequestContext(whisper: whisper, width: 800)
+  context.evaluate req.query.target, (error, results)->
     return next(error) if error
     res.send results
 
