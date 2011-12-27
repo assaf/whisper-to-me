@@ -14,7 +14,6 @@ AGGREGATES =
   5: "min"
 
 
-
 class Whisper
   constructor: (basedir = "/opt/graphite/storage")->
     @basedir = Path.normalize(basedir)
@@ -106,7 +105,7 @@ Whisper.header = (fd, callback)->
   File.read fd, metadata, 0, METADATA_SIZE, 0, (error)->
     return callback error if error
     # Meta-data fields
-    aggregate   = metadata.readInt32BE(0)
+    aggregate     = metadata.readInt32BE(0)
     max_retention = metadata.readInt32BE(4)
     xff           = metadata.readFloatBE(8)
     remain        = metadata.readInt32BE(12)
@@ -152,7 +151,8 @@ Whisper.points = (fd, from_time, until_time, callback)->
       from_time = oldest_time
 
     unless from_time < until_time
-      throw new Error("Invalid time interval")
+      callback Error("Invalid time interval")
+      return
     if until_time > now
       until_time = now
     if until_time < from_time
