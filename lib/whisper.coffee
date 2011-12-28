@@ -1,5 +1,6 @@
 File = require("fs")
 Path = require("path")
+glob = require("glob")
 
 
 ARCHIVE_SIZE    = 12 # 3 x 32 bit ints
@@ -20,6 +21,13 @@ class Whisper
     # Maps metric name to file descriptor
     @metrics = {}
 
+  # Returns an index of all available metrics.
+  index: (callback)->
+    path = "#{@basedir}/whisper/"
+    glob "#{path}**/*.wsp", (error, matches)=>
+      return callback error if error
+      names = (match.slice(path.length).replace(/\.wsp$/, "").replace(/\//g, ".") for match in matches)
+      callback null, names
 
   # Given a FQN, return all matching metrics. Each name part may end with * for partial matching.
   find: (fqn, callback)->

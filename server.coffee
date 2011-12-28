@@ -9,17 +9,25 @@ server.configure ->
   server.use Express.query()
   server.use Express.static("#{__dirname}/public")
 
+  server.set "views", "#{__dirname}/public"
+  server.set "view engine", "eco"
+  server.set "view options", layout: "layout.eco"
+  server.enable "json callback"
+
 server.listen 8080
 
-
-file = "stats.findme.http.requests"
-file = "stats/timers/findme/http/response_time/count"
+whisper = new Whisper(process.env.GRAPHITE_STORAGE || "/opt/graphite/storage")
 
 
-server.get "/graph", (req, res, next)->
-  File.readFile "#{__dirname}/public/index.html", (error, html)->
+server.get "/", (req, res, next)->
+  whisper.index (error, metrics)->
     return next(error) if error
-    res.send html
+    res.render "index", metrics: metrics
+
+
+server.get "/graph/*", (req, res, next)->
+  target = req.params[0]
+  res.render "graph", target: target
 
 
 server.get "/javascripts/require.js", (req, res, next)->
@@ -35,7 +43,6 @@ server.get "/javascripts/d3*.js", (req, res, next)->
     res.send script, "Content-Type": "application/javascript"
 
 
-whisper = new Whisper()
 
 
 server.get "/render", (req, res, next)->
