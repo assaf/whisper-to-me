@@ -57,7 +57,7 @@ define [], ->
       y_fmt = d3.format(",.4f")
 
       x_scale = d3.scale.linear().domain([to, from]).range([width, 0]).nice()
-      y_scale = d3.scale.linear().domain([min, max]).range([height, 0]).nice()
+      y_scale = d3.scale.linear().domain([min, max]).range([height, 0]).nice().clamp(true)
 
       # Format time based on resolution
       range = to - from

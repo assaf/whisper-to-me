@@ -58,9 +58,9 @@ server.get "/javascripts/*.js", (req, res, next)->
 
 
 server.get "/render", (req, res, next)->
-  #from_time = (Date.now() - 86400000) / 1000
-  #until_time = Date.now() / 1000
-  context = new RequestContext(whisper: whisper, width: 800)
+  from = (Date.now() / 1000 - 84600)
+  to = Date.now() / 1000
+  context = new RequestContext(whisper: whisper, from: from, to: to, width: 800)
   context.evaluate req.query.target, (error, results)->
     if error
       res.send error: error.message, 400

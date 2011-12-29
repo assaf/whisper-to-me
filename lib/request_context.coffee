@@ -28,8 +28,8 @@ class RequestContext
   # minute per pixel.
   constructor: ({ @whisper, from, to, width })->
     assert width, "Argument width is required"
-    to ?= Math.floor(Date.now() / 1000)
-    from ?= to - 60 * width
+    to = Math.floor(to || (Date.now() / 1000))
+    from = Math.floor(from || (to - 60 * width))
     assert from < to, "Invalid time range, from less than to"
 
     # Calculate number of seconds per pixel
@@ -38,9 +38,8 @@ class RequestContext
 
     # Determine real time range given resolution
     @to = to - to % @sec_per_point
-    @from = from - from % @sec_per_point
-    assert (@to - @from) / @sec_per_point == width, "Something is wrong with our rounding algorithm"
-    @points_count = width
+    @from = to - width * @sec_per_point
+    @points_count = Math.floor((@to - @from) / @sec_per_point)
 
     # Cache for duration of request
     @metrics = {}
