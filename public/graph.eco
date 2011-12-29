@@ -1,5 +1,5 @@
 <div id="chart" class="chart" data-target="<%= @target %>">
-  <svg width="880" height="300"></svg>
+  <svg width="900" height="400"></svg>
 </div>
 <script>require(["/javascripts/graph.js"], function(graph) {
   graph("#chart")

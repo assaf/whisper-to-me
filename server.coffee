@@ -1,5 +1,7 @@
+CoffeeScript    = require("coffee-script")
 Express         = require("express")
 File            = require("fs")
+Path            = require("path")
 Whisper         = require("./lib/whisper")
 RequestContext  = require("./lib/request_context")
 
@@ -35,14 +37,24 @@ server.get "/javascripts/require.js", (req, res, next)->
     return next(error) if error
     res.send script, "Content-Type": "application/javascript"
 
-
 server.get "/javascripts/d3*.js", (req, res, next)->
   name = req.params[0]
   File.readFile "#{__dirname}/node_modules/d3/d3#{name}.min.js", (error, script)->
     return next(error) if error
     res.send script, "Content-Type": "application/javascript"
 
-
+server.get "/javascripts/*.js", (req, res, next)->
+  name = req.params[0]
+  filename = "#{__dirname}/public/coffeescripts/#{name}.coffee"
+  Path.exists filename, (exists)->
+    if exists
+      File.readFile filename, (error, script)->
+        if error
+          next error
+        else
+          res.send CoffeeScript.compile(script.toString("utf-8")), "Content-Type": "application/javascript"
+    else
+      next()
 
 
 server.get "/render", (req, res, next)->

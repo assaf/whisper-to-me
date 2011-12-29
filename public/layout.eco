@@ -8,10 +8,14 @@
     <script src="/javascripts/d3.time.js"></script>
     <script src="/javascripts/require.js"></script>
     <style>
-      .chart rect { stroke: steelblue; fill: steelblue; }
-      .chart line { stroke: steelblue; opacity: 0.5 }
-      .chart line.v { stroke: #444; fill: none; stroke-width: 1px; opacity: 1 }
-      .chart text.x, .chart text.y { fill: blue }
+      .chart {
+        font-family: "helvetica neue", "helvetica", "verdana";
+        font-weight: 500;
+      }
+      .chart text { fill: black }
+      .chart line { stroke: #ccc }
+      .chart line.axis { stroke: #888 }
+      .chart path { fill: none }
     </style>
   </head>
   <body>
