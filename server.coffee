@@ -21,28 +21,43 @@ server.listen 8080
 whisper = new Whisper(process.env.GRAPHITE_STORAGE || "/opt/graphite/storage")
 
 
+# Main page lists all known metrics.
 server.get "/", (req, res, next)->
   whisper.index (error, metrics)->
     return next(error) if error
     res.render "index", metrics: metrics
 
-
+# Graph a particular target.
 server.get "/graph/*", (req, res, next)->
   target = req.params[0]
   res.render "graph", target: target
 
+# This is supposed to work like Graphite's /render but only support JSON output.
+server.get "/render", (req, res, next)->
+  from = (Date.now() / 1000 - 84600)
+  to = Date.now() / 1000
+  context = new RequestContext(whisper: whisper, from: from, to: to, width: 800)
+  context.evaluate req.query.target, (error, results)->
+    if error
+      res.send error: error.message, 400
+    else
+      res.send results
 
+
+# Serve require.js from Node module.
 server.get "/javascripts/require.js", (req, res, next)->
   File.readFile "#{__dirname}/node_modules/requirejs/require.js", (error, script)->
     return next(error) if error
     res.send script, "Content-Type": "application/javascript"
 
+# Serve D3 files from Node module.
 server.get "/javascripts/d3*.js", (req, res, next)->
   name = req.params[0]
   File.readFile "#{__dirname}/node_modules/d3/d3#{name}.min.js", (error, script)->
     return next(error) if error
     res.send script, "Content-Type": "application/javascript"
 
+# Serve CoffeeScript files, compiled on demand.
 server.get "/javascripts/*.js", (req, res, next)->
   name = req.params[0]
   filename = "#{__dirname}/public/coffeescripts/#{name}.coffee"
@@ -56,36 +71,3 @@ server.get "/javascripts/*.js", (req, res, next)->
     else
       next()
 
-
-server.get "/render", (req, res, next)->
-  from = (Date.now() / 1000 - 84600)
-  to = Date.now() / 1000
-  context = new RequestContext(whisper: whisper, from: from, to: to, width: 800)
-  context.evaluate req.query.target, (error, results)->
-    if error
-      res.send error: error.message, 400
-    else
-      res.send results
-
-
-###
-pickle = eval(File.readFileSync("#{__dirname}/lib/pickle.js", "utf-8"))
-client = require("net").connect(7002, "localhost")
-client.on "error", (error)->
-  console.log error
-client.on "data", (data)->
-  length = data.readInt32BE(0)
-  slice = data.slice(4, length + 4)
-  console.log(slice)
-  console.log(slice.toString())
-  client.end()
-client.on "connect", ->
-  client.on "end", ->
-    console.log client.bytesRead
-    console.log "disconnected"
-  request = pickle.dumps(type: "cache-query", metric: "stats.findme.http.requests")
-  size = new Buffer(4)
-  size.writeInt32BE request.length, 0
-  client.write size
-  client.write request
-###
