@@ -2,9 +2,8 @@ define [], ->
   return (el, target)->
     $el = $(el)
     target = target || $el.data("target")
-    
-    $.get "/render", target: target, (results)->
 
+    chart = (results)->
       # Turn results into a list of targets, each one consisting of label, color, width, lines and the min/max/current
       # values.  Each line is a sequence of X/Y points.  Also determine maximum and minimum (Y), from/to times (X).
       targets = []
@@ -103,4 +102,10 @@ define [], ->
         .text( (d)-> if d.last then "Min #{y_fmt(d.min)}  Max #{y_fmt(d.max)}  Last #{y_fmt(d.last)}" else "" )
 
 
-
+    $.get("/render", target: target)
+      .then(chart)
+      .fail (xhr)->
+        if /^application\/json/.test(xhr.getResponseHeader("content-type"))
+          error = JSON.parse(xhr.responseText).error
+        error ?= xhr.responseText
+        $el.text(error)

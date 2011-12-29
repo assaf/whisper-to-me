@@ -62,8 +62,10 @@ server.get "/render", (req, res, next)->
   #until_time = Date.now() / 1000
   context = new RequestContext(whisper: whisper, width: 800)
   context.evaluate req.query.target, (error, results)->
-    return next(error) if error
-    res.send results
+    if error
+      res.send error: error.message, 400
+    else
+      res.send results
 
 
 ###

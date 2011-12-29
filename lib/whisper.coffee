@@ -112,10 +112,14 @@ class Whisper
       Whisper.points fd, from_time, until_time, callback
     else
       filename = "#{@basedir}/whisper/#{fqn.replace(/\./g, "/")}.wsp"
-      File.open filename, "r", (error, fd)=>
-        return callback error if error
-        @metrics[fqn] = fd
-        Whisper.points fd, from_time, until_time, callback
+      Path.exists filename, (exists)=>
+        if exists
+          File.open filename, "r", (error, fd)=>
+            return callback error if error
+            @metrics[fqn] = fd
+            Whisper.points fd, from_time, until_time, callback
+        else
+          callback new Error("No metric #{fqn}")
 
 
 # Read header information and pass to callback.
