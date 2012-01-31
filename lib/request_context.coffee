@@ -163,7 +163,7 @@ class RequestContext
                   to:             time_info.until
                   sec_per_point:  time_info.step
                   datapoints:     datapoints
-                series = results.concat(new Series(options))
+                series = new Series(options)
                 @metrics[name] = series
                 next_metric i + 1, results.concat(series)
         next_metric 0, []
