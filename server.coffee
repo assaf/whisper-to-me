@@ -36,8 +36,9 @@ server.get "/graph/*", (req, res, next)->
 server.get "/render", (req, res, next)->
   from = (Date.now() / 1000 - 84600)
   to = Date.now() / 1000
+
   context = new RequestContext(whisper: whisper, from: from, to: to, width: 800)
-  context.evaluate req.query.target, (error, results)->
+  context.evaluate req.query.target.split(";"), (error, results)->
     if error
       res.send error: error.message, 400
     else
