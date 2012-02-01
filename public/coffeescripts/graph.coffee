@@ -2,6 +2,9 @@ define [], ->
   return (el, target)->
     $el = $(el)
     target = target || $el.data("target")
+    
+    # TODO: make this a query parameter or some such
+    connected_lines = false
 
     chart = (results)->
       # Turn results into a list of targets, each one consisting of label, color, width, lines and the min/max/current
@@ -27,10 +30,12 @@ define [], ->
         line = null
         for i, [value, time] of datapoints
           target.last = value
+
           if value == null
-            line = null
+            if connected_lines == false
+              line = null
             continue
-          
+
           unless line
             line = []
             lines.push line
